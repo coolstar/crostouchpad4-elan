@@ -219,6 +219,8 @@ typedef struct _ELAN_CONTEXT
 
 	USHORT PValue[5];
 
+	USHORT Palm[5];
+
 	BOOLEAN BUTTONPRESSED;
 
 	USHORT TIMEINT;

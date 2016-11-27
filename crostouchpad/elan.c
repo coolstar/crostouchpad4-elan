@@ -429,10 +429,12 @@ BOOLEAN OnInterruptIsr(
 	int x[5];
 	int y[5];
 	int p[5];
+	int palm[5];
 	for (int i = 0; i < 5; i++) {
 		x[i] = -1;
 		y[i] = -1;
 		p[i] = -1;
+		palm[i] = 0;
 	}
 	uint8_t *finger_data = &touchpadReport[ETP_FINGER_DATA_OFFSET];
 	uint8_t tp_info = touchpadReport[ETP_TOUCH_INFO_OFFSET];
@@ -475,6 +477,10 @@ BOOLEAN OnInterruptIsr(
 			major = max(area_x, area_y);
 			minor = min(area_x, area_y);
 
+			if (minor >= 6) {
+				palm[i] = 1;
+			}
+
 			scaled_pressure = pressure;
 
 			if (scaled_pressure > ETP_MAX_PRESSURE)
@@ -500,6 +506,7 @@ BOOLEAN OnInterruptIsr(
 
 			pDevice->XValue[i] = x[i];
 			pDevice->YValue[i] = y[i];
+			pDevice->Palm[i] = palm[i];
 			pDevice->PValue[i] = p[i];
 
 			//DbgPrint("[elantp] %d: %dx%d", i, x[i], y[i]);
@@ -525,10 +532,16 @@ BOOLEAN OnInterruptIsr(
 
 			uint8_t flags = pDevice->Flags[i];
 			if (flags & MXT_T9_DETECT) {
-				report.Touch[count].Status = MULTI_CONFIDENCE_BIT | MULTI_TIPSWITCH_BIT;
+				if (pDevice->Palm[i])
+					report.Touch[count].Status = MULTI_TIPSWITCH_BIT;
+				else
+					report.Touch[count].Status = MULTI_CONFIDENCE_BIT | MULTI_TIPSWITCH_BIT;
 			}
 			else if (flags & MXT_T9_PRESS) {
-				report.Touch[count].Status = MULTI_CONFIDENCE_BIT | MULTI_TIPSWITCH_BIT;
+				if (pDevice->Palm[i])
+					report.Touch[count].Status = MULTI_TIPSWITCH_BIT;
+				else
+					report.Touch[count].Status = MULTI_CONFIDENCE_BIT | MULTI_TIPSWITCH_BIT;
 			}
 			else if (flags & MXT_T9_RELEASE) {
 				report.Touch[count].Status = MULTI_CONFIDENCE_BIT;

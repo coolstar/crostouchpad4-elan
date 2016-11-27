@@ -477,7 +477,7 @@ BOOLEAN OnInterruptIsr(
 			major = max(area_x, area_y);
 			minor = min(area_x, area_y);
 
-			if (minor >= 6) {
+			if (minor >= 7) {
 				palm[i] = 1;
 			}
 

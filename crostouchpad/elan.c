@@ -54,6 +54,23 @@ void elan_i2c_write_cmd(PELAN_CONTEXT pDevice, UINT16 reg, UINT16 cmd) {
 	SpbWriteDataSynchronously16(&pDevice->I2CContext, reg, (uint8_t *)buffer, sizeof(buffer));
 }
 
+void elan_i2c_power_control(PELAN_CONTEXT pDevice, bool enable)
+{
+	uint8_t val[2];
+	uint16_t reg;
+	int error;
+
+	elan_i2c_read_cmd(pDevice, ETP_I2C_POWER_CMD, val);
+
+	reg = *((uint16_t *)val);
+	if (enable)
+		reg &= ~ETP_DISABLE_POWER;
+	else
+		reg |= ETP_DISABLE_POWER;
+
+	elan_i2c_write_cmd(pDevice, ETP_I2C_POWER_CMD, reg);
+}
+
 static bool elan_check_ASUS_special_fw(uint8_t prodid, uint8_t ic_type)
 {
 	if (ic_type != 0x0E)
@@ -86,6 +103,8 @@ NTSTATUS BOOTTRACKPAD(
 	SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_DESC_CMD, &val, ETP_I2C_DESC_LENGTH);
 
 	SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_REPORT_DESC_CMD, &val, ETP_I2C_REPORT_DESC_LENGTH);
+
+	elan_i2c_power_control(pDevice, 1);
 
 	uint8_t val2[3];
 
@@ -365,6 +384,8 @@ Status
 	UNREFERENCED_PARAMETER(FxPreviousState);
 
 	PELAN_CONTEXT pDevice = GetDeviceContext(FxDevice);
+
+	elan_i2c_power_control(pDevice, 0);
 
 	WdfTimerStop(pDevice->Timer, TRUE);
 

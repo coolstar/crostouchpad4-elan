@@ -22,8 +22,8 @@ Revision History:
 #include "spb.h"
 #include <reshub.h>
 
-static ULONG ElanPrintDebugLevel = 100;
-static ULONG ElanPrintDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
+static ULONG ElanDebugLevel = 100;
+static ULONG ElanDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
 
 NTSTATUS
 SpbDoWriteDataSynchronously16(

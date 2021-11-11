@@ -27,8 +27,6 @@
 #define DRIVERNAME                 "crostouchpad4.sys: "
 
 #define ELAN_POOL_TAG            (ULONG) 'nalE'
-#define ELAN_HARDWARE_IDS        L"CoolStar\\ELAN0000\0\0"
-#define ELAN_HARDWARE_IDS_LENGTH sizeof(ELAN_HARDWARE_IDS)
 
 #define NTDEVICE_NAME_STRING       L"\\Device\\ELAN0000"
 #define SYMBOLIC_NAME_STRING       L"\\DosDevices\\ELAN0000"
@@ -260,8 +258,6 @@ DRIVER_INITIALIZE DriverEntry;
 EVT_WDF_DRIVER_UNLOAD ElanDriverUnload;
 
 EVT_WDF_DRIVER_DEVICE_ADD ElanEvtDeviceAdd;
-
-EVT_WDFDEVICE_WDM_IRP_PREPROCESS ElanEvtWdmPreprocessMnQueryId;
 
 EVT_WDF_IO_QUEUE_IO_INTERNAL_DEVICE_CONTROL ElanEvtInternalDeviceControl;
 

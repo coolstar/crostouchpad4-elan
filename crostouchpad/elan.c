@@ -45,22 +45,25 @@ __in PUNICODE_STRING RegistryPath
 	return status;
 }
 
-void elan_i2c_read_cmd(PELAN_CONTEXT pDevice, UINT16 reg, uint8_t *val) {
-	SpbReadDataSynchronously16(&pDevice->I2CContext, reg, val, ETP_I2C_INF_LENGTH);
+NTSTATUS elan_i2c_read_cmd(PELAN_CONTEXT pDevice, UINT16 reg, uint8_t *val) {
+	return SpbReadDataSynchronously16(&pDevice->I2CContext, reg, val, ETP_I2C_INF_LENGTH);
 }
 
-void elan_i2c_write_cmd(PELAN_CONTEXT pDevice, UINT16 reg, UINT16 cmd) {
+NTSTATUS elan_i2c_write_cmd(PELAN_CONTEXT pDevice, UINT16 reg, UINT16 cmd) {
 	uint16_t buffer[] = { cmd };
-	SpbWriteDataSynchronously16(&pDevice->I2CContext, reg, (uint8_t *)buffer, sizeof(buffer));
+	return SpbWriteDataSynchronously16(&pDevice->I2CContext, reg, (uint8_t *)buffer, sizeof(buffer));
 }
 
-void elan_i2c_power_control(PELAN_CONTEXT pDevice, bool enable)
+NTSTATUS elan_i2c_power_control(PELAN_CONTEXT pDevice, bool enable)
 {
 	uint8_t val[2];
 	uint16_t reg;
-	int error;
+	NTSTATUS status;
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_POWER_CMD, val);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_POWER_CMD, val);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
 	reg = *((uint16_t *)val);
 	if (enable)
@@ -68,11 +71,13 @@ void elan_i2c_power_control(PELAN_CONTEXT pDevice, bool enable)
 	else
 		reg |= ETP_DISABLE_POWER;
 
-	elan_i2c_write_cmd(pDevice, ETP_I2C_POWER_CMD, reg);
+	return elan_i2c_write_cmd(pDevice, ETP_I2C_POWER_CMD, reg);
 }
 
 static bool elan_check_ASUS_special_fw(uint8_t prodid, uint8_t ic_type)
 {
+	if (ic_type == 0x08 && prodid == 0x26)
+		return true;
 	if (ic_type != 0x0E)
 		return false;
 
@@ -92,58 +97,112 @@ NTSTATUS BOOTTRACKPAD(
 	_In_  PELAN_CONTEXT  pDevice
 	)
 {
-	NTSTATUS status = 0;
+	NTSTATUS status;
 
-	elan_i2c_write_cmd(pDevice, ETP_I2C_STAND_CMD, ETP_I2C_RESET);
+	status = elan_i2c_write_cmd(pDevice, ETP_I2C_STAND_CMD, ETP_I2C_RESET);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
 	/* get reset achknowledgement 000 */
 	uint8_t val[256];
-	SpbReadDataSynchronously(&pDevice->I2CContext, 0x00, &val, ETP_I2C_INF_LENGTH);
+	status = SpbReadDataSynchronously(&pDevice->I2CContext, 0x00, &val, ETP_I2C_INF_LENGTH);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
-	SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_DESC_CMD, &val, ETP_I2C_DESC_LENGTH);
+	status = SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_DESC_CMD, &val, ETP_I2C_DESC_LENGTH);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
-	SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_REPORT_DESC_CMD, &val, ETP_I2C_REPORT_DESC_LENGTH);
+	status = SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_REPORT_DESC_CMD, &val, ETP_I2C_REPORT_DESC_LENGTH);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
-	elan_i2c_power_control(pDevice, 1);
+	status = elan_i2c_power_control(pDevice, 1);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
 	uint8_t val2[3];
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_UNIQUEID_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_UNIQUEID_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	uint8_t prodid = val2[0];
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_SM_VERSION_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_SM_VERSION_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	uint8_t smvers = val2[0];
 	uint8_t ictype = val2[1];
 
 	if (elan_check_ASUS_special_fw(prodid, ictype)) { //some Elan trackpads on certain ASUS laptops are buggy (linux commit 2de4fcc64685def3e586856a2dc636df44532395)
-		elan_i2c_write_cmd(pDevice, ETP_I2C_STAND_CMD, ETP_I2C_WAKE_UP);
+		status = elan_i2c_write_cmd(pDevice, ETP_I2C_STAND_CMD, ETP_I2C_WAKE_UP);
+		if (!NT_SUCCESS(status)) {
+			return status;
+		}
 
-		elan_i2c_write_cmd(pDevice, ETP_I2C_SET_CMD, ETP_ENABLE_ABS);
+		status = elan_i2c_write_cmd(pDevice, ETP_I2C_SET_CMD, ETP_ENABLE_ABS);
+		if (!NT_SUCCESS(status)) {
+			return status;
+		}
 	}
 	else {
-		elan_i2c_write_cmd(pDevice, ETP_I2C_SET_CMD, ETP_ENABLE_ABS);
+		status = elan_i2c_write_cmd(pDevice, ETP_I2C_SET_CMD, ETP_ENABLE_ABS);
+		if (!NT_SUCCESS(status)) {
+			return status;
+		}
 
-		elan_i2c_write_cmd(pDevice, ETP_I2C_STAND_CMD, ETP_I2C_WAKE_UP);
+		status = elan_i2c_write_cmd(pDevice, ETP_I2C_STAND_CMD, ETP_I2C_WAKE_UP);
+		if (!NT_SUCCESS(status)) {
+			return status;
+		}
 	}
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_FW_VERSION_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_FW_VERSION_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	uint8_t version = val2[0];
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_FW_CHECKSUM_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_FW_CHECKSUM_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	uint16_t csum = *((uint16_t *)val2);
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_IAP_VERSION_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_IAP_VERSION_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	uint8_t iapversion = val2[0];
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_PRESSURE_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_PRESSURE_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_MAX_X_AXIS_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_MAX_X_AXIS_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	pDevice->max_x = (*((uint16_t *)val2)) & 0x0fff;
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_MAX_Y_AXIS_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_MAX_Y_AXIS_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 	pDevice->max_y = (*((uint16_t *)val2)) & 0x0fff;
 
-	elan_i2c_read_cmd(pDevice, ETP_I2C_RESOLUTION_CMD, val2);
+	status = elan_i2c_read_cmd(pDevice, ETP_I2C_RESOLUTION_CMD, val2);
+	if (!NT_SUCCESS(status)) {
+		return status;
+	}
 
 	uint8_t hw_res_x = val2[0];
 	uint8_t hw_res_y = val2[1];
@@ -285,6 +344,13 @@ Status
 		return status;
 	}
 
+	status = BOOTTRACKPAD(pDevice);
+
+	if (!NT_SUCCESS(status))
+	{
+		return status;
+	}
+
 	return status;
 }
 
@@ -344,7 +410,7 @@ Status
 	UNREFERENCED_PARAMETER(FxPreviousState);
 
 	PELAN_CONTEXT pDevice = GetDeviceContext(FxDevice);
-	NTSTATUS status = STATUS_SUCCESS;
+	NTSTATUS status;
 
 	WdfTimerStart(pDevice->Timer, WDF_REL_TIMEOUT_IN_MS(10));
 
@@ -352,8 +418,12 @@ Status
 		pDevice->Flags[i] = 0;
 	}
 
-	BOOTTRACKPAD(pDevice);
+	status = elan_i2c_power_control(pDevice, 1);
+	if (!NT_SUCCESS(status)){
+		return status;
+	}
 
+	pDevice->ConnectInterrupt = true;
 	pDevice->RegsSet = false;
 
 	return status;
@@ -383,15 +453,17 @@ Status
 {
 	UNREFERENCED_PARAMETER(FxPreviousState);
 
+	NTSTATUS status;
+
 	PELAN_CONTEXT pDevice = GetDeviceContext(FxDevice);
 
-	elan_i2c_power_control(pDevice, 0);
+	status = elan_i2c_power_control(pDevice, 0);
 
 	WdfTimerStop(pDevice->Timer, TRUE);
 
 	pDevice->ConnectInterrupt = false;
 
-	return STATUS_SUCCESS;
+	return status;
 }
 
 BOOLEAN OnInterruptIsr(
@@ -403,7 +475,7 @@ BOOLEAN OnInterruptIsr(
 	PELAN_CONTEXT pDevice = GetDeviceContext(Device);
 
 	if (!pDevice->ConnectInterrupt)
-		return true;
+		return false;
 
 	LARGE_INTEGER CurrentTime;
 
@@ -417,10 +489,12 @@ BOOLEAN OnInterruptIsr(
 		DIFF.QuadPart = (CurrentTime.QuadPart - pDevice->LastTime.QuadPart) / 1000;
 
 	uint8_t touchpadReport[ETP_MAX_REPORT_LEN];
-	SpbReadDataSynchronously(&pDevice->I2CContext, 0, &touchpadReport, sizeof(touchpadReport));
+	if (!NT_SUCCESS(SpbReadDataSynchronously(&pDevice->I2CContext, 0, &touchpadReport, sizeof(touchpadReport)))) {
+		return false;
+	}
 
 	if (touchpadReport[0] == 0xff) {
-		return true;
+		return false;
 	}
 
 	struct _ELAN_MULTITOUCH_REPORT report;

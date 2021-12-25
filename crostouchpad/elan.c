@@ -246,7 +246,7 @@ NTSTATUS BOOTTRACKPAD(
 	pDevice->phy_y_hid[0] = phy_y8bit[0];
 	pDevice->phy_y_hid[1] = phy_y8bit[1];
 
-	pDevice->ConnectInterrupt = true;
+	pDevice->TrackpadBooted = true;
 
 	return status;
 }
@@ -476,6 +476,8 @@ BOOLEAN OnInterruptIsr(
 
 	if (!pDevice->ConnectInterrupt)
 		return false;
+	if (!pDevice->TrackpadBooted)
+		return false;
 
 	LARGE_INTEGER CurrentTime;
 
@@ -653,6 +655,8 @@ ElanReadWriteWorkItem(
 
 	if (!pDevice->ConnectInterrupt)
 		return;
+	if (!pDevice->TrackpadBooted)
+		return false;
 
 	struct _ELAN_MULTITOUCH_REPORT report;
 	report.ReportID = REPORTID_MTOUCH;
@@ -717,8 +721,8 @@ void ElanTimerFunc(_In_ WDFTIMER hTimer){
 	if (!pDevice->ConnectInterrupt)
 		return;
 
-	/*if (!pDevice->RegsSet)
-		return;*/
+	if (!pDevice->RegsSet)
+		return;
 
 	PELAN_CONTEXT context;
 	WDF_OBJECT_ATTRIBUTES attributes;
@@ -827,6 +831,9 @@ IN PWDFDEVICE_INIT DeviceInit
 
 	devContext = GetDeviceContext(device);
 
+	devContext->FxDevice = device;
+	devContext->TrackpadBooted = false;
+
 	WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
 
 	queueConfig.PowerManaged = WdfFalse;
@@ -889,7 +896,6 @@ IN PWDFDEVICE_INIT DeviceInit
 	//
 
 	devContext->DeviceMode = DEVICE_MODE_MOUSE;
-	devContext->FxDevice = device;
 
 	return status;
 }

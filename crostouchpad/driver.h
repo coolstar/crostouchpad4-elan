@@ -215,6 +215,8 @@ typedef struct _ELAN_CONTEXT
 
 	BOOLEAN RegsSet;
 
+	BOOLEAN TrackpadBooted;
+
 	WDFTIMER Timer;
 
 	uint8_t      Flags[5];

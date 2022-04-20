@@ -45,13 +45,17 @@ __in PUNICODE_STRING RegistryPath
 	return status;
 }
 
-NTSTATUS elan_i2c_read_cmd(PELAN_CONTEXT pDevice, UINT16 reg, uint8_t *val) {
-	return SpbReadDataSynchronously16(&pDevice->I2CContext, reg, val, ETP_I2C_INF_LENGTH);
+NTSTATUS elan_i2c_read_cmd(PELAN_CONTEXT pDevice, UINT16 reg, uint8_t* val) {
+	return SpbXferDataSynchronously(&pDevice->I2CContext, &reg, sizeof(UINT16), val, ETP_I2C_INF_LENGTH);
+}
+
+NTSTATUS elan_i2c_read_block(PELAN_CONTEXT pDevice, UINT16 reg, PVOID val, ULONG len) {
+	return SpbXferDataSynchronously(&pDevice->I2CContext, &reg, sizeof(UINT16), val, len);
 }
 
 NTSTATUS elan_i2c_write_cmd(PELAN_CONTEXT pDevice, UINT16 reg, UINT16 cmd) {
-	uint16_t buffer[] = { cmd };
-	return SpbWriteDataSynchronously16(&pDevice->I2CContext, reg, (uint8_t *)buffer, sizeof(buffer));
+	uint16_t buffer[] = { reg, cmd };
+	return SpbWriteDataSynchronously(&pDevice->I2CContext, buffer, sizeof(buffer));
 }
 
 NTSTATUS elan_i2c_power_control(PELAN_CONTEXT pDevice, bool enable)
@@ -104,22 +108,28 @@ NTSTATUS BOOTTRACKPAD(
 		return status;
 	}
 
+	/* Wait for device to reset */
+	LARGE_INTEGER delay;
+	delay.QuadPart = -100 * 10;
+	KeDelayExecutionThread(KernelMode, FALSE, &delay);
+
 	/* get reset achknowledgement 000 */
 	uint8_t val[256];
-	status = SpbReadDataSynchronously(&pDevice->I2CContext, 0x00, &val, ETP_I2C_INF_LENGTH);
+	status = SpbReadDataSynchronously(&pDevice->I2CContext, val, ETP_I2C_INF_LENGTH);
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
 
-	status = SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_DESC_CMD, &val, ETP_I2C_DESC_LENGTH);
+	status = elan_i2c_read_block(pDevice, ETP_I2C_DESC_CMD, val, ETP_I2C_DESC_LENGTH);
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
 
-	status = SpbReadDataSynchronously16(&pDevice->I2CContext, ETP_I2C_REPORT_DESC_CMD, &val, ETP_I2C_REPORT_DESC_LENGTH);
+	status = elan_i2c_read_block(pDevice, ETP_I2C_REPORT_DESC_CMD, val, ETP_I2C_REPORT_DESC_LENGTH);
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
+
 
 	status = elan_i2c_power_control(pDevice, 1);
 	if (!NT_SUCCESS(status)) {
@@ -146,6 +156,9 @@ NTSTATUS BOOTTRACKPAD(
 		if (!NT_SUCCESS(status)) {
 			return status;
 		}
+
+		delay.QuadPart = -200 * 10;
+		KeDelayExecutionThread(KernelMode, FALSE, &delay); //Wait for touchpad to wake up
 
 		status = elan_i2c_write_cmd(pDevice, ETP_I2C_SET_CMD, ETP_ENABLE_ABS);
 		if (!NT_SUCCESS(status)) {
@@ -491,7 +504,7 @@ BOOLEAN OnInterruptIsr(
 		DIFF.QuadPart = (CurrentTime.QuadPart - pDevice->LastTime.QuadPart) / 1000;
 
 	uint8_t touchpadReport[ETP_MAX_REPORT_LEN];
-	if (!NT_SUCCESS(SpbReadDataSynchronously(&pDevice->I2CContext, 0, &touchpadReport, sizeof(touchpadReport)))) {
+	if (!NT_SUCCESS(SpbReadDataSynchronously(&pDevice->I2CContext, &touchpadReport, sizeof(touchpadReport)))) {
 		return false;
 	}
 

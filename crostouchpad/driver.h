@@ -217,8 +217,6 @@ typedef struct _ELAN_CONTEXT
 
 	BOOLEAN TrackpadBooted;
 
-	WDFTIMER Timer;
-
 	uint8_t      Flags[5];
 
 	USHORT XValue[5];

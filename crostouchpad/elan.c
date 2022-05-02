@@ -148,7 +148,7 @@ NTSTATUS BOOTTRACKPAD(
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
-	uint8_t smvers = val2[0];
+	//uint8_t smvers = val2[0];
 	uint8_t ictype = val2[1];
 
 	if (elan_check_ASUS_special_fw(prodid, ictype)) { //some Elan trackpads on certain ASUS laptops are buggy (linux commit 2de4fcc64685def3e586856a2dc636df44532395)
@@ -181,19 +181,19 @@ NTSTATUS BOOTTRACKPAD(
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
-	uint8_t version = val2[0];
+	//uint8_t version = val2[0];
 
 	status = elan_i2c_read_cmd(pDevice, ETP_I2C_FW_CHECKSUM_CMD, val2);
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
-	uint16_t csum = *((uint16_t *)val2);
+	//uint16_t csum = *((uint16_t *)val2);
 
 	status = elan_i2c_read_cmd(pDevice, ETP_I2C_IAP_VERSION_CMD, val2);
 	if (!NT_SUCCESS(status)) {
 		return status;
 	}
-	uint8_t iapversion = val2[0];
+	//uint8_t iapversion = val2[0];
 
 	status = elan_i2c_read_cmd(pDevice, ETP_I2C_PRESSURE_CMD, val2);
 	if (!NT_SUCCESS(status)) {
@@ -589,10 +589,10 @@ BOOLEAN OnInterruptIsr(
 		if (x[i] != -1) {
 			pDevice->Flags[i] = MXT_T9_DETECT;
 
-			pDevice->XValue[i] = x[i];
-			pDevice->YValue[i] = y[i];
-			pDevice->Palm[i] = palm[i];
-			pDevice->PValue[i] = p[i];
+			pDevice->XValue[i] = (USHORT)x[i];
+			pDevice->YValue[i] = (USHORT)y[i];
+			pDevice->Palm[i] = (USHORT)palm[i];
+			pDevice->PValue[i] = (USHORT)p[i];
 
 			//DbgPrint("[elantp] %d: %dx%d", i, x[i], y[i]);
 		}
@@ -600,11 +600,11 @@ BOOLEAN OnInterruptIsr(
 
 	pDevice->BUTTONPRESSED = (tp_info & 0x01);
 
-	pDevice->TIMEINT += DIFF.QuadPart;
+	pDevice->TIMEINT += (USHORT)DIFF.QuadPart;
 
 	pDevice->LastTime = CurrentTime;
 
-	int count = 0, i = 0;
+	BYTE count = 0, i = 0;
 	while (count < 5 && i < 5) {
 		if (pDevice->Flags[i] != 0) {
 			report.Touch[count].ContactID = i;
@@ -664,7 +664,6 @@ IN PWDFDEVICE_INIT DeviceInit
 	WDFDEVICE                     device;
 	WDF_INTERRUPT_CONFIG interruptConfig;
 	WDFQUEUE                      queue;
-	UCHAR                         minorFunction;
 	PELAN_CONTEXT               devContext;
 
 	UNREFERENCED_PARAMETER(Driver);
@@ -1246,10 +1245,11 @@ IN PELAN_CONTEXT DevContext,
 IN WDFREQUEST Request
 )
 {
+	UNREFERENCED_PARAMETER(DevContext);
+
 	NTSTATUS status = STATUS_SUCCESS;
 	WDF_REQUEST_PARAMETERS params;
 	PHID_XFER_PACKET transferPacket = NULL;
-	size_t bytesWritten = 0;
 
 	ElanPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"ElanWriteReport Entry\n");
@@ -1429,6 +1429,8 @@ IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 )
 {
+	UNREFERENCED_PARAMETER(CompleteRequest);
+
 	NTSTATUS status = STATUS_SUCCESS;
 	WDF_REQUEST_PARAMETERS params;
 	PHID_XFER_PACKET transferPacket = NULL;
@@ -1515,6 +1517,8 @@ IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 )
 {
+	UNREFERENCED_PARAMETER(CompleteRequest);
+
 	NTSTATUS status = STATUS_SUCCESS;
 	WDF_REQUEST_PARAMETERS params;
 	PHID_XFER_PACKET transferPacket = NULL;

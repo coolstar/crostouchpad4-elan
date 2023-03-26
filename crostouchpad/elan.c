@@ -357,13 +357,6 @@ Status
 		return status;
 	}
 
-	status = BOOTTRACKPAD(pDevice);
-
-	if (!NT_SUCCESS(status))
-	{
-		return status;
-	}
-
 	return status;
 }
 
@@ -429,8 +422,9 @@ Status
 		pDevice->Flags[i] = 0;
 	}
 
-	status = elan_i2c_power_control(pDevice, 1);
-	if (!NT_SUCCESS(status)){
+	status = BOOTTRACKPAD(pDevice);
+	if (!NT_SUCCESS(status))
+	{
 		return status;
 	}
 

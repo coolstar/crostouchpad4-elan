@@ -149,6 +149,9 @@
     <ClCompile Include="elan.c" />
     <ClCompile Include="spb.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="crostouchpad4.rc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

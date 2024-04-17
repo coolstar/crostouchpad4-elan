@@ -55,6 +55,9 @@
 #define ETP_MAX_FINGERS		5
 #define ETP_FINGER_DATA_LEN	5
 #define ETP_REPORT_ID		0x5D
+#define ETP_TP_REPORT_ID	0x5E
+#define ETP_TP_REPORT_ID2	0x5F
+#define ETP_REPORT_ID2		0x60	/* High precision report */
 #define ETP_REPORT_ID_OFFSET	2
 #define ETP_TOUCH_INFO_OFFSET	3
 #define ETP_FINGER_DATA_OFFSET	4

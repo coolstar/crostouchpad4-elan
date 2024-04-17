@@ -504,6 +504,32 @@ BOOLEAN OnInterruptIsr(
 		return false;
 	}
 
+	uint8_t tp_report_id = touchpadReport[ETP_REPORT_ID_OFFSET];
+	if (tp_report_id == ETP_TP_REPORT_ID || tp_report_id == ETP_TP_REPORT_ID2) {
+		//Trackpoint
+
+		uint8_t* packet = &touchpadReport[ETP_REPORT_ID_OFFSET + 1];
+
+		struct _ELAN_TRACKPOINT_REPORT report = { 0 };
+		report.ReportID = REPORTID_MOUSE;
+		if (packet[0] & 0x1)
+			report.Button |= 1; //Left Button
+		if (packet[0] & 0x2)
+			report.Button |= 2; //Right Button
+		if (packet[0] & 0x4)
+			report.Button |= 4; //Middle Button
+
+		if ((packet[3] & 0x0F) == 0x06) {
+			report.XValue = packet[4] - (int)((packet[1] ^ 0x80) << 1);
+			report.YValue = (int)((packet[2] ^ 0x80) << 1) - packet[5];
+		}
+
+		size_t bytesWritten;
+		ElanProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
+
+		return true;
+	}
+
 	struct _ELAN_MULTITOUCH_REPORT report;
 	report.ReportID = REPORTID_MTOUCH;
 	
@@ -517,6 +543,7 @@ BOOLEAN OnInterruptIsr(
 		p[i] = -1;
 		palm[i] = 0;
 	}
+
 	uint8_t *finger_data = &touchpadReport[ETP_FINGER_DATA_OFFSET];
 	uint8_t tp_info = touchpadReport[ETP_TOUCH_INFO_OFFSET];
 	uint8_t hover_info = touchpadReport[ETP_HOVER_INFO_OFFSET];
@@ -531,10 +558,16 @@ BOOLEAN OnInterruptIsr(
 		unsigned int scaled_pressure;
 
 		if (contact_valid) {
-			pos_x = ((finger_data[0] & 0xf0) << 4) |
-				finger_data[1];
-			pos_y = ((finger_data[0] & 0x0f) << 8) |
-				finger_data[2];
+			if (tp_report_id == ETP_REPORT_ID2) { //High Precision
+				pos_x = (finger_data[0] << 8) | finger_data[1];
+				pos_y = (finger_data[2] << 8) | finger_data[3];
+			}
+			else {
+				pos_x = ((finger_data[0] & 0xf0) << 4) |
+					finger_data[1];
+				pos_y = ((finger_data[0] & 0x0f) << 8) |
+					finger_data[2];
+			}
 
 			mk_x = (finger_data[3] & 0x0f);
 			mk_y = (finger_data[3] >> 4);

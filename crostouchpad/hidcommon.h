@@ -47,6 +47,18 @@ typedef struct
 }
 TOUCH, *PTOUCH;
 
+typedef struct _ELAN_TRACKPOINT_REPORT
+{
+	BYTE      ReportID;
+
+	BYTE	  Button;
+
+	USHORT	  XValue;
+
+	USHORT	  YValue;
+
+} ElanTrackpointReport;
+
 typedef struct _ELAN_MULTITOUCH_REPORT
 {
 
